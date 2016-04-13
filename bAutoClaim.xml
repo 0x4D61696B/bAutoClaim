@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Component
+        xmlns="http://www.red5studios.com/"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.red5studios.com/ ../../../schemas/component.xsd"
+    >
+
+    <Info
+        title="bAutoClaim"
+        author="BurstBiscuit"
+        description=""
+        url=""
+        uiVersion="1000"
+    />
+
+    <Events>
+        <Event name="ON_COMPONENT_LOAD"                     bind="OnComponentLoad"                  />
+        <Event name="ON_BOUNTY_POINTS_CHANGED"              bind="OnBountyPointsChanged"            />
+        <Event name="ON_DAILY_LOGIN_REWARD"                 bind="OnDailyLoginReward"               />
+        <Event name="ON_DAILY_REWARD_LOGIN_INFO_UPDATED"    bind="OnDailyRewardLoginInfoUpdated"    />
+        <Event name="ON_PLAYER_READY"                       bind="OnPlayerReady"                    />
+        <Event name="ON_TIMED_DAILY_REWARD"                 bind="OnTimedDailyReward"               />
+        <Event name="MY_DAILY_LOGIN_DATA_UPDATE"            bind="OnDailyLoginDataUpdate"           />
+    </Events>
+</Component>
