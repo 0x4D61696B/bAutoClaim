@@ -64,7 +64,10 @@ local io_Settings = {
 }
 
 function OnOptionChanged(id, value)
-    if     (id == "Debug") then
+    if     (id == "__LOADED") then
+        Debug.Log("Options have been loaded")
+
+    elseif (id == "Debug") then
         Debug.EnableLogging(value)
 
     elseif (id == "Timed") then
@@ -77,6 +80,47 @@ function OnOptionChanged(id, value)
     end
 
     io_Settings[id] = value
+end
+
+-- Workaround to fix ON_PLAYER_READY before the options are loaded
+function LoadOptions()
+    Debug.Log("WORKAROUND: Loading options")
+
+    local function GetSetting(name)
+        if (Component.GetSetting(name)) then
+            local setting = tostring(Component.GetSetting(name))
+
+            if     (setting == "true") then
+                return true
+
+            elseif (setting == "false") then
+                return false
+
+            elseif (unicode.match(setting, "[%+%-]?%d+%.%d*")) then
+                return tonumber(setting)
+
+            else
+                return Component.GetSetting(name)
+            end
+        else
+            return nil
+        end
+    end
+
+    io_Settings.Debug               = GetSetting("option-checkbox:Debug")
+    Debug.EnableLogging(io_Settings.Debug)
+
+    io_Settings.Daily               = GetSetting("option-checkbox:Daily")
+    io_Settings.Timed               = GetSetting("option-checkbox:Timed")
+    io_Settings.TimedCombat         = GetSetting("option-checkbox:TimedCombat")
+    io_Settings.TimedClosePanel     = GetSetting("option-checkbox:TimedClosePanel")
+    io_Settings.Bounty              = GetSetting("option-checkbox:Bounty")
+    io_Settings.Credits             = GetSetting("option-checkbox:Credits")
+    io_Settings.CrystiteThreshold   = GetSetting("option-textinput:CrystiteThreshold")
+
+    for i in ipairs(c_BountyTrackRewards) do
+        io_Settings["BountyReward" .. tostring(i)] = GetSetting("option-checkbox:BountyReward" .. tostring(i))
+    end
 end
 
 function InitializeOptions()
@@ -197,6 +241,7 @@ function ConvertCrystiteToCredits(exchangeInfo)
     Debug.Table("ConvertCrystiteToCredits()", exchangeInfo)
 
     if (not io_Settings.Credits) then
+        Debug.Log("Credits exchange disabled, return")
         return
 
     elseif (HTTP.IsRequestPending(g_CurrencyExchangeURL)) then
@@ -240,6 +285,7 @@ function GetCurrencyExchangeInfo()
     Debug.Log("GetCurrencyExchangeInfo()")
 
     if (not io_Settings.Credits) then
+        Debug.Log("Credits exchange disabled, return")
         return
 
     elseif (HTTP.IsRequestPending(g_CurrencyExchangeURL)) then
@@ -283,8 +329,11 @@ end
 --  Events
 -- =============================================================================
 
-function OnComponentLoad()
+function OnComponentLoad(args)
+    Debug.Event(args)
+
     InterfaceOptions.SetCallbackFunc(OnOptionChanged)
+    InterfaceOptions.NotifyOnLoaded(true)
 
     g_BountyTrackCosts  = Game.GetBountyTrackCosts()
     table.sort(g_BountyTrackCosts, function(a, b) return a > b end)
@@ -292,6 +341,9 @@ function OnComponentLoad()
     CYCLE_ClaimTimedDailyReward = Callback2.CreateCycle(ClaimTimedDailyReward)
 
     InitializeOptions()
+
+    -- WORKAROUND: Load options before ON_PLAYER_READY
+    LoadOptions()
 end
 
 function OnBountyPointsChanged(args)
@@ -336,7 +388,9 @@ function OnDailyRewardLoginInfoUpdated(args)
     Debug.Event(args)
 end
 
-function OnPlayerReady()
+function OnPlayerReady(args)
+    Debug.Event(args)
+
     local clientApiHost     = System.GetOperatorSetting("clientapi_host")
     local characterId       = select(5, Player.GetInfo())
     g_CurrencyExchangeURL   = tostring(clientApiHost) .. "/api/v3/characters/" .. tostring(characterId) .. "/currency_exchange"
