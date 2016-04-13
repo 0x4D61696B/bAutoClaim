@@ -96,7 +96,7 @@ function LoadOptions()
             elseif (setting == "false") then
                 return false
 
-            elseif (unicode.match(setting, "[%+%-]?%d+%.%d*")) then
+            elseif (unicode.match(setting, "[%+%-]?%d+%.?%d*")) then
                 return tonumber(setting)
 
             else
