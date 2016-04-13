@@ -18,12 +18,32 @@ Debug.EnableLogging(false)
 
 
 -- =============================================================================
+--  Constants
+-- =============================================================================
+
+-- Copied from Bounties.lua and REVERSED to match values
+local c_BountyTrackRewards = {
+    139803,
+    139802,
+    139801,
+    139800,
+    139799,
+    139798,
+    139797,
+    139796
+}
+
+
+-- =============================================================================
 --  Variables
 -- =============================================================================
 
-local g_BountyTrackCosts = {}
+local g_BountyLastClaim
+local g_BountyMismatch      = false
+local g_BountyTrackCosts    = {}
 local g_CurrencyExchangeURL
 local g_DailyRewardStage
+local g_IsPlayerReady       = false
 
 local CYCLE_ClaimTimedDailyReward
 
@@ -59,7 +79,7 @@ function OnOptionChanged(id, value)
     io_Settings[id] = value
 end
 
-do
+function InitializeOptions()
     InterfaceOptions.SaveVersion(1)
 
     InterfaceOptions.AddCheckBox({
@@ -68,13 +88,28 @@ do
         default = io_Settings.Debug
     })
 
-    InterfaceOptions.StartGroup({label = "Bounty rewards"})
-        InterfaceOptions.AddCheckBox({
-            id          = "Bounty",
-            label       = "Claim bounty rewards (platinum cache)",
-            tooltip     = "Automatically claim bounty rewards when reaching platinum cache",
-            default     = io_Settings.Bounty
-        })
+    InterfaceOptions.StartGroup({
+        label       = "Bounty rewards",
+        checkbox    = true,
+        id          = "Bounty",
+        default     = io_Settings.Bounty
+    })
+        if (#g_BountyTrackCosts ~= #c_BountyTrackRewards) then
+            g_BountyMismatch = true
+            Notification(unicode.format("Bounty track cost(%d) and reward(%d) size mismatch! Defaulting to platinum cache", #g_BountyTrackCosts, #c_BountyTrackRewards))
+
+        else
+            for i, bountyTrackRewards in ipairs(c_BountyTrackRewards) do
+                local rewardInfo = Game.GetItemInfoByType(bountyTrackRewards)
+
+                InterfaceOptions.AddCheckBox({
+                    id          = "BountyReward" .. tostring(i),
+                    label       = "Claim " .. ((rewardInfo and rewardInfo.name) and rewardInfo.name or g_BountyTrackCosts[i]),
+                    tooltip     = ((rewardInfo and rewardInfo.description) and unicode.gsub(rewardInfo.description, "%[%/?color=?#?%w*%]", "") or nil),
+                    default     = false
+                })
+            end
+        end
     InterfaceOptions.StopGroup()
 
     InterfaceOptions.StartGroup({label = "Daily login rewards"})
@@ -251,15 +286,36 @@ end
 function OnComponentLoad()
     InterfaceOptions.SetCallbackFunc(OnOptionChanged)
 
-    g_BountyTrackCosts          = Game.GetBountyTrackCosts()
+    g_BountyTrackCosts  = Game.GetBountyTrackCosts()
+    table.sort(g_BountyTrackCosts, function(a, b) return a > b end)
+
     CYCLE_ClaimTimedDailyReward = Callback2.CreateCycle(ClaimTimedDailyReward)
+
+    InitializeOptions()
 end
 
 function OnBountyPointsChanged(args)
     Debug.Event(args)
 
-    if (io_Settings.Bounty and type(args.quantity) == "number" and args.quantity >= g_BountyTrackCosts[#g_BountyTrackCosts]) then
-        Player.ClaimBountyRewards()
+    if (io_Settings.Bounty and g_IsPlayerReady and type(args.quantity) == "number") then
+        if (g_BountyMismatch and args.quantity >= g_BountyTrackCosts[#g_BountyTrackCosts]) then
+            Debug.Log("Player.ClaimBountyRewards()")
+            Player.ClaimBountyRewards()
+
+        else
+            Debug.Table("g_BountyTrackCosts", g_BountyTrackCosts)
+
+            for i, cost in ipairs(g_BountyTrackCosts) do
+                Debug.Log("Checking tracking cost", i, cost)
+
+                if (io_Settings["BountyReward" .. tostring(i)] and args.quantity >= cost and i ~= g_BountyLastClaim) then
+                    Debug.Log("Player.ClaimBountyRewards()", i, cost)
+                    Player.ClaimBountyRewards()
+                    g_BountyLastClaim = i
+                    break
+                end
+            end
+        end
     end
 end
 
@@ -284,6 +340,7 @@ function OnPlayerReady()
     local clientApiHost     = System.GetOperatorSetting("clientapi_host")
     local characterId       = select(5, Player.GetInfo())
     g_CurrencyExchangeURL   = tostring(clientApiHost) .. "/api/v3/characters/" .. tostring(characterId) .. "/currency_exchange"
+    g_IsPlayerReady         = true
 
     GetCurrencyExchangeInfo()
 end
