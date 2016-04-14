@@ -376,6 +376,7 @@ function OnDailyLoginDataUpdate(args)
 
     if (io_Settings.Daily and args.ready) then
         Player.ClaimDailyItem()
+        Notification("Daily login reward claimed")
     end
 end
 
