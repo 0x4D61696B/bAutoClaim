@@ -45,6 +45,7 @@ local g_CurrencyExchangeURL
 local g_DailyRewardStage
 local g_IsPlayerReady       = false
 
+local CB2_ClaimDailyLoginNotification
 local CYCLE_ClaimTimedDailyReward
 
 
@@ -338,6 +339,9 @@ function OnComponentLoad(args)
     g_BountyTrackCosts  = Game.GetBountyTrackCosts()
     table.sort(g_BountyTrackCosts, function(a, b) return a > b end)
 
+    CB2_ClaimDailyLoginNotification = Callback2.Create()
+    CB2_ClaimDailyLoginNotification:Bind(Notification, "Daily login reward claimed")
+
     CYCLE_ClaimTimedDailyReward = Callback2.CreateCycle(ClaimTimedDailyReward)
 
     InitializeOptions()
@@ -376,7 +380,13 @@ function OnDailyLoginDataUpdate(args)
 
     if (io_Settings.Daily and args.ready) then
         Player.ClaimDailyItem()
-        Notification("Daily login reward claimed")
+
+        if (CB2_ClaimDailyLoginNotification:Pending()) then
+            CB2_ClaimDailyLoginNotification:Reschedule(1)
+
+        else
+            CB2_ClaimDailyLoginNotification:Schedule(1)
+        end
     end
 end
 
