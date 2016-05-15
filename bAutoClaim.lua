@@ -367,7 +367,9 @@ function OnBountyPointsChanged(args)
                 if (io_Settings["BountyReward" .. tostring(i)] and args.quantity >= cost and i ~= g_BountyLastClaim) then
                     Debug.Log("Player.ClaimBountyRewards()", i, cost)
                     Player.ClaimBountyRewards()
-                    g_BountyLastClaim = i
+
+                    -- Reset g_BountyLastClaim when reaching "maximum" bounty tracking cost stage, otherwise set to i
+                    g_BountyLastClaim = (args.quantity < g_BountyTrackCosts[#g_BountyTrackCosts] and i or nil)
                     break
                 end
             end
