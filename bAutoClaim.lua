@@ -67,6 +67,7 @@ local io_Settings = {
 function OnOptionChanged(id, value)
     if     (id == "__LOADED") then
         Debug.Log("Options have been loaded")
+        Debug.Table("io_Settings", io_Settings)
 
     elseif (id == "Debug") then
         Debug.EnableLogging(value)
@@ -109,8 +110,6 @@ function LoadOptions()
     end
 
     io_Settings.Debug               = GetSetting("option-checkbox:Debug")
-    Debug.EnableLogging(io_Settings.Debug)
-
     io_Settings.Daily               = GetSetting("option-checkbox:Daily")
     io_Settings.Timed               = GetSetting("option-checkbox:Timed")
     io_Settings.TimedCombat         = GetSetting("option-checkbox:TimedCombat")
@@ -122,6 +121,8 @@ function LoadOptions()
     for i in ipairs(c_BountyTrackRewards) do
         io_Settings["BountyReward" .. tostring(i)] = GetSetting("option-checkbox:BountyReward" .. tostring(i))
     end
+
+    Debug.EnableLogging(io_Settings.Debug)
 end
 
 function InitializeOptions()
@@ -214,9 +215,7 @@ function Notification(message)
 end
 
 function TimedDailyRewardRoll()
-    local status, failure = pcall(function()
-        Player.RequestTimedDailyRewardRoll()
-    end)
+    local status, failure = pcall(Player.RequestTimedDailyRewardRoll)
 
     Debug.Table("Player.RequestTimedDailyRewardRoll()", {status = status, failure = failure})
 end
@@ -405,8 +404,7 @@ function OnPlayerReady(args)
     Debug.Event(args)
 
     local clientApiHost     = System.GetOperatorSetting("clientapi_host")
-    local characterId       = select(5, Player.GetInfo())
-    g_CurrencyExchangeURL   = tostring(clientApiHost) .. "/api/v3/characters/" .. tostring(characterId) .. "/currency_exchange"
+    g_CurrencyExchangeURL   = tostring(clientApiHost) .. "/api/v3/characters/" .. tostring(Player.GetCharacterId()) .. "/currency_exchange"
     g_IsPlayerReady         = true
 
     GetCurrencyExchangeInfo()
@@ -423,9 +421,7 @@ function OnTimedDailyReward(args)
         return
 
     elseif (args.state == "ROLLED") then
-        local status, failure = pcall(function()
-            Player.RequestTimedDailyRewardCommit()
-        end)
+        local status, failure = pcall(Player.RequestTimedDailyRewardCommit)
 
         Debug.Table("Player.RequestTimedDailyRewardCommit()", {status = status, failure = failure})
         Callback2.FireAndForget(Component.SetInputMode, "default", 0.05)
